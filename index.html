@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Carta de Drinks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Outfit:wght@400;500;600&display=swap">
+<style>
+/* Layout: cardápio de balcão — grade de fotos para escolher, ficha em tela cheia para preparar */
+:root{
+  --bg:#f6f3ef; --surface:#ffffff; --fg:#1d1a17; --muted:#6d655d; --line:#e4ddd4;
+  --accent:#d9572b; --accent-ink:#ffffff; --chip:#efe8df;
+  --display:"Fraunces", Georgia, "Times New Roman", serif;
+  --body:"Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141110; --surface:#1f1b19; --fg:#f3ece4; --muted:#a69a8f; --line:#2f2925;
+  --accent:#f07a4a; --accent-ink:#1a0f0a; --chip:#2a2421; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141110; --surface:#1f1b19; --fg:#f3ece4; --muted:#a69a8f; --line:#2f2925;
+  --accent:#f07a4a; --accent-ink:#1a0f0a; --chip:#2a2421; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header h1{font-family:var(--display);font-weight:800;font-size:clamp(2rem,6vw,3.2rem);line-height:1;margin:0;letter-spacing:-.01em;text-wrap:balance}
+header p{margin:6px 0 0;color:var(--muted)}
+.filters{display:flex;flex-wrap:wrap;gap:8px}
+.filters button{font:inherit;font-size:.9rem;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--fg);
+  padding:7px 14px;border-radius:999px;cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+.card{all:unset;cursor:pointer;display:flex;flex-direction:column;background:var(--surface);border-radius:16px;overflow:hidden;
+  border:1px solid var(--line);transition:transform .15s ease}
+.card:hover{transform:translateY(-2px)}
+.card:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.card .ph{aspect-ratio:3/4;max-width:100%;background:var(--c);overflow:hidden}
+.card img{width:100%;height:100%;object-fit:cover;display:block}
+.card .info{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px}
+.card h2{font-family:var(--display);font-weight:600;font-size:1.2rem;margin:0;line-height:1.15}
+.tags{display:flex;flex-wrap:wrap;gap:5px}
+.tag{font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;background:var(--chip);color:var(--muted);padding:3px 8px;border-radius:6px}
+.tag.base{background:var(--c);color:#1a1410}
+.card .sub{color:var(--muted);font-size:.88rem}
+
+/* Ficha */
+.sheet{position:fixed;inset:0;background:var(--bg);z-index:20;overflow-y:auto;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet-in{max-width:980px;margin:0 auto;padding-block:16px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:28px;align-items:start}
+.topbar{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.btn{font:inherit;font-weight:600;font-size:.95rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:9px 16px;border-radius:999px;cursor:pointer}
+.btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.nav{display:flex;gap:8px}
+.hero{border-radius:18px;overflow:hidden;background:var(--c);aspect-ratio:3/4;max-width:100%;position:sticky;top:16px}
+.hero img{width:100%;height:100%;object-fit:cover;display:block}
+.detail{min-width:0;display:flex;flex-direction:column;gap:22px}
+.detail h2{font-family:var(--display);font-weight:800;font-size:clamp(2rem,5vw,2.8rem);line-height:1.02;margin:0;text-wrap:balance}
+.serv{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.serv span.lbl{font-size:.78rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--fg);font-size:1.3rem;cursor:pointer;line-height:1}
+.stepper output{min-width:2.2ch;text-align:center;font-weight:600;font-size:1.3rem;font-variant-numeric:tabular-nums}
+h3{font-size:.8rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.ing{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.ing li{border-bottom:1px solid var(--line)}
+.ing label{display:grid;grid-template-columns:26px 92px minmax(0,1fr);align-items:center;gap:10px;padding:13px 2px;cursor:pointer;font-size:1.12rem}
+.ing input{width:22px;height:22px;accent-color:var(--accent);margin:0}
+.ing .q{font-weight:600;font-variant-numeric:tabular-nums;color:var(--accent)}
+.ing input:checked ~ span{text-decoration:line-through;opacity:.45}
+.steps{margin:0;padding:0;list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:10px}
+.steps li{counter-increment:s;display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;font-size:1.12rem;line-height:1.5;max-width:62ch}
+.steps li::before{content:counter(s);width:28px;height:28px;border-radius:50%;background:var(--chip);color:var(--fg);font-weight:600;font-size:.85rem;
+  display:grid;place-items:center;margin-top:2px}
+.note{font-size:.98rem;color:var(--muted);border-left:3px solid var(--c);padding-left:12px;max-width:62ch}
+.reset{align-self:flex-start;font:inherit;font-size:.88rem;background:none;border:none;color:var(--muted);text-decoration:underline;cursor:pointer;padding:0}
+@media (max-width:720px){
+  .sheet-in{grid-template-columns:1fr;gap:18px}
+  .hero{position:static;aspect-ratio:4/3}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .card h2{font-size:1.05rem}
+}
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Carta de Drinks</h1>
+    <p>Toque num drink para abrir a receita. Ajuste a quantidade de doses e marque os ingredientes conforme for usando.</p>
+  </header>
+  <div class="filters" role="group" aria-label="Filtrar por base">
+    <button type="button" id="f-all" data-f="all" aria-pressed="true">Todos</button>
+    <button type="button" id="f-vodka" data-f="Vodka" aria-pressed="false">Vodka</button>
+    <button type="button" id="f-gin" data-f="Gin" aria-pressed="false">Gin</button>
+    <button type="button" id="f-long" data-f="long" aria-pressed="false">Copo longo</button>
+    <button type="button" id="f-short" data-f="short" aria-pressed="false">Taça / curto</button>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="d-title">
+  <div class="sheet-in">
+    <div class="topbar">
+      <button class="btn" id="close" type="button">← Todos os drinks</button>
+      <div class="nav">
+        <button class="btn" id="prev" type="button" aria-label="Drink anterior">‹</button>
+        <button class="btn" id="next" type="button" aria-label="Próximo drink">›</button>
+      </div>
+    </div>
+    <div class="hero" id="d-hero"><img id="d-img" alt=""></div>
+    <div class="detail">
+      <div>
+        <div class="tags" id="d-tags" style="margin-bottom:8px"></div>
+        <h2 id="d-title"></h2>
+      </div>
+      <div class="serv">
+        <span class="lbl">Doses</span>
+        <div class="stepper">
+          <button type="button" id="minus" aria-label="Menos uma dose">−</button>
+          <output id="count">1</output>
+          <button type="button" id="plus" aria-label="Mais uma dose">+</button>
+        </div>
+        <span class="sub" id="total" style="color:var(--muted);font-size:.9rem"></span>
+      </div>
+      <section>
+        <h3>Ingredientes</h3>
+        <ul class="ing" id="d-ing"></ul>
+      </section>
+      <section>
+        <h3>Preparo</h3>
+        <ol class="steps" id="d-steps"></ol>
+      </section>
+      <p class="note" id="d-note" hidden></p>
+      <button class="reset" id="reset" type="button">Desmarcar ingredientes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const IMG = {d1:"img/d1.jpg",d2:"img/d2.jpg",d3:"img/d3.jpg",d4:"img/d4.jpg",d5:"img/d5.jpg"};
+const DRINKS = [
+  {id:"passion-mango-martini",img:"d1",name:"Passion Mango Martini",base:"Vodka",glass:"short",glassName:"Taça de vinho",color:"#f2a92c",
+   profile:"Frutado, cítrico",
+   ing:[[15,"ml","xarope de manga"],[15,"ml","xarope de maracujá"],[15,"ml","limão espremido"],[60,"ml","vodka"],[null,"","Gelo"],[null,"","Sal para a borda"]],
+   steps:["Coloque a vodka, os xaropes e o limão na coqueteleira.","Acrescente gelo e bata bem.","Cruste a borda da taça com sal.","Sirva com o strainer sobre 4 pedras de gelo."],
+   note:"Opcional: complete com água com gás e misture delicadamente."},
+  {id:"space-lady",img:"d2",name:"Space Lady",base:"Vodka",glass:"long",glassName:"Copo longo",color:"#ee5a5f",
+   profile:"Cítrico, levemente picante",
+   ing:[[60,"ml","vodka"],[30,"ml","limão espremido"],[30,"ml","simple syrup"],[null,"","Refrigerante citrus"],[10,"un","pimenta rosa"],[null,"","Gelo"]],
+   steps:["No copo, adicione o gelo, a vodka, o limão espremido e o simple syrup. Misture bem.","Complete com refrigerante citrus e misture suavemente.","Finalize com as pimentas rosa."]},
+  {id:"caipirinha-de-limao",img:"d3",name:"Caipirinha de Limão",base:"Vodka",glass:"short",glassName:"Copo baixo",color:"#c7d84e",
+   profile:"Cítrico, clássico",
+   ing:[[10,"un","limão"],[1,"colher cheia","açúcar"],[60,"ml","vodka"],[null,"","Gelo"]],
+   steps:["Macere suavemente o limão com o açúcar.","Adicione o gelo e a vodka.","Coqueteleie vigorosamente por 10 segundos."]},
+  {id:"sunset-tropical",img:"d4",name:"Sunset Tropical",base:"Vodka",glass:"long",glassName:"Copo longo",color:"#f68a3a",
+   profile:"Tropical, doce",
+   ing:[[50,"ml","vodka"],[50,"ml","abacaxi"],[15,"ml","xarope de manga"],[20,"ml","limão"],[10,"ml","grenadine"],[null,"","Refrigerante citrus"],[null,"","Gelo"]],
+   steps:["Misture vodka, abacaxi, xarope de manga e limão com gelo.","Complete com refrigerante citrus.","Finalize com a grenadine (ela desce e forma o degradê)."]},
+  {id:"passion-fitz",img:"d5",name:"Passion Fitz",base:"Gin",glass:"long",glassName:"Copo longo",color:"#e9de6a",
+   profile:"Refrescante, borbulhante",
+   ing:[[30,"ml","xarope de maracujá"],[30,"ml","limão espremido"],[15,"ml","simple syrup"],[60,"ml","gin"],[1,"pitada","sal"],[null,"","Água com gás"],[null,"","Gelo"]],
+   steps:["Coqueteleie com gelo o limão, os xaropes, o gin e uma pitada de sal.","Sirva no copo.","Complete com água com gás e misture delicadamente."]}
+];
+
+const $ = s => document.querySelector(s);
+const grid = $("#grid"), sheet = $("#sheet");
+let filter = "all", current = 0, doses = 1, wake = null;
+const checked = {};
+
+function visible(){ return DRINKS.filter(d => filter==="all" || d.base===filter || d.glass===filter); }
+
+function renderGrid(){
+  grid.innerHTML = "";
+  visible().forEach(d => {
+    const b = document.createElement("button");
+    b.className = "card"; b.type = "button"; b.style.setProperty("--c", d.color);
+    b.setAttribute("aria-label", "Abrir receita: " + d.name);
+    b.innerHTML = `<div class="ph"><img src="${IMG[d.img]}" alt="" loading="lazy"></div>
+      <div class="info"><h2>${d.name}</h2>
+      <div class="tags"><span class="tag base">${d.base}</span><span class="tag">${d.glassName}</span></div>
+      <div class="sub">${d.profile}</div></div>`;
+    b.addEventListener("click", () => open(DRINKS.indexOf(d)));
+    grid.appendChild(b);
+  });
+}
+
+function fmt(n){ return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ","); }
+
+function renderSheet(){
+  const d = DRINKS[current];
+  sheet.style.setProperty("--c", d.color);
+  $("#d-hero").style.setProperty("--c", d.color);
+  $("#d-img").src = IMG[d.img]; $("#d-img").alt = d.name;
+  $("#d-title").textContent = d.name;
+  $("#d-tags").innerHTML = `<span class="tag base" style="--c:${d.color}">${d.base}</span><span class="tag">${d.glassName}</span><span class="tag">${d.profile}</span>`;
+  $("#count").textContent = doses;
+  const ml = d.ing.reduce((s,[q,u]) => s + (u==="ml" && q ? q : 0), 0) * doses;
+  $("#total").textContent = `≈ ${ml} ml de ingredientes medidos` + (doses>1 ? ` · use ${doses} copos` : "");
+  const set = checked[d.id] || (checked[d.id] = new Set());
+  const ul = $("#d-ing"); ul.innerHTML = "";
+  d.ing.forEach(([q,u,t], i) => {
+    const li = document.createElement("li");
+    const qty = q==null ? "a gosto" : `${fmt(q*doses)} ${u}`;
+    const id = `ing-${d.id}-${i}`;
+    li.innerHTML = `<label for="${id}"><input type="checkbox" id="${id}" ${set.has(i)?"checked":""}><span class="q">${qty}</span><span>${t}</span></label>`;
+    li.querySelector("input").addEventListener("change", e => { e.target.checked ? set.add(i) : set.delete(i); });
+    ul.appendChild(li);
+  });
+  $("#d-steps").innerHTML = d.steps.map(s => `<li>${s}</li>`).join("");
+  const note = $("#d-note"); note.hidden = !d.note; note.textContent = d.note || "";
+}
+
+async function keepAwake(on){
+  try{
+    if(on && "wakeLock" in navigator && !wake){ wake = await navigator.wakeLock.request("screen"); wake.addEventListener("release",()=>wake=null); }
+    if(!on && wake){ await wake.release(); wake = null; }
+  }catch(e){ wake = null; }
+}
+
+function open(i){
+  current = i; doses = 1; renderSheet();
+  sheet.hidden = false; sheet.scrollTop = 0; document.body.style.overflow = "hidden";
+  try{ history.replaceState(null, "", "#" + DRINKS[i].id); }catch(e){}
+  keepAwake(true);
+  $("#close").focus();
+}
+function close(){
+  sheet.hidden = true; document.body.style.overflow = "";
+  try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
+  keepAwake(false);
+}
+function step(dir){
+  const list = visible(); let k = list.indexOf(DRINKS[current]);
+  if(k<0) k = 0;
+  const d = list[(k + dir + list.length) % list.length];
+  current = DRINKS.indexOf(d); doses = 1; renderSheet(); sheet.scrollTop = 0;
+  try{ history.replaceState(null, "", "#" + d.id); }catch(e){}
+}
+
+document.querySelectorAll(".filters button").forEach(b => b.addEventListener("click", () => {
+  filter = b.dataset.f;
+  document.querySelectorAll(".filters button").forEach(x => x.setAttribute("aria-pressed", x===b));
+  renderGrid();
+}));
+$("#close").addEventListener("click", close);
+$("#prev").addEventListener("click", () => step(-1));
+$("#next").addEventListener("click", () => step(1));
+$("#minus").addEventListener("click", () => { if(doses>1){ doses--; renderSheet(); } });
+$("#plus").addEventListener("click", () => { if(doses<20){ doses++; renderSheet(); } });
+$("#reset").addEventListener("click", () => { checked[DRINKS[current].id] = new Set(); renderSheet(); });
+document.addEventListener("keydown", e => {
+  if(sheet.hidden) return;
+  if(e.key==="Escape") close();
+  if(e.key==="ArrowRight") step(1);
+  if(e.key==="ArrowLeft") step(-1);
+});
+document.addEventListener("visibilitychange", () => { if(!sheet.hidden && document.visibilityState==="visible") keepAwake(true); });
+
+renderGrid();
+function fromHash(){
+  const id = location.hash.slice(1);
+  const i = DRINKS.findIndex(d => d.id===id);
+  if(i>=0) open(i); else if(!sheet.hidden) close();
+}
+window.addEventListener("hashchange", fromHash);
+fromHash();
+</script>
+</body>
+</html>
