@@ -40,6 +40,8 @@ header p{margin:6px 0 0;color:var(--muted)}
 .card .hit{font-size:.82rem;color:var(--fg)}
 .card .hit mark{background:color-mix(in srgb,var(--accent) 22%,transparent);color:inherit;border-radius:3px;padding:0 2px}
 .empty{color:var(--muted);margin:0;font-size:1rem}
+.nophoto{width:100%;height:100%;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--c) 70%,#fff) 0%,var(--c) 70%)}
+.nophoto span{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#1a1410;opacity:.6}
 .var button{font-size:1rem;padding:9px 16px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
 .card{all:unset;cursor:pointer;display:flex;flex-direction:column;background:var(--surface);border-radius:16px;overflow:hidden;
@@ -160,7 +162,8 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase
 </div>
 
 <script>
-const IMG = {d1:"img/d1.jpg",d2:"img/d2.jpg",d3:"img/d3.jpg",d4:"img/d4.jpg",d5:"img/d5.jpg"};
+const IMG = {d1:"img/d1.jpg",d2:"img/d2.jpg",d3:"img/d3.jpg",d4:"img/d4.jpg",d5:"img/d5.jpg",d6:null};
+const photo = (d, lazy) => IMG[d.img] ? `<img src="${IMG[d.img]}" alt="" ${lazy?'loading="lazy"':''}>` : `<div class="nophoto"><span>Foto em breve</span></div>`;
 const DRINKS = [
   {id:"passion-mango-martini",img:"d1",name:"Passion Mango Martini",base:"Vodka",glass:"short",glassName:"Taça de vinho",color:"#f2a92c",
    profile:"Frutado, cítrico",
@@ -177,6 +180,10 @@ const DRINKS = [
    profile:"Cítrico, clássico",
    ing:[[10,"un","limão"],[1,"colher cheia","açúcar"],[60,"ml","vodka"],[null,"","Gelo"]],
    steps:["Macere suavemente o limão com o açúcar.","Adicione o gelo e a vodka.","Coqueteleie vigorosamente por 10 segundos."]},
+  {id:"caipirinha-de-rucula",img:"d6",name:"Caipirinha de Rúcula",base:"Vodka",glass:"short",glassName:"Copo baixo",color:"#8fbf5a",
+   profile:"Herbal, cítrico",
+   ing:[[1,"punhado","folhas de rúcula"],[15,"ml","limão espremido"],[20,"ml","simple syrup"],[60,"ml","vodka"],[null,"","Gelo"]],
+   steps:["Macere suavemente a rúcula com o limão e o simple syrup.","Adicione o gelo e a vodka.","Coqueteleie vigorosamente por 10 segundos.","Sirva no copo e finalize com uma folha de rúcula."]},
   {id:"sunset-tropical",img:"d4",name:"Sunset Tropical",base:"Vodka",glass:"long",glassName:"Copo longo",color:"#f68a3a",
    profile:"Tropical, doce",
    ing:[[50,"ml","vodka"],[50,"ml","abacaxi"],[15,"ml","xarope de manga"],[20,"ml","limão"],[10,"ml","grenadine"],[null,"","Refrigerante citrus"],[null,"","Gelo"]],
@@ -198,7 +205,7 @@ const SYN = {
   "grenadine":"granadine groselha romã", "simple syrup":"xarope simples xarope de açúcar calda",
   "limão":"lima lime", "maracujá":"passion fruit", "manga":"mango", "abacaxi":"pineapple ananás",
   "refrigerante citrus":"soda sprite limonada", "água com gás":"soda club soda", "pimenta rosa":"pink pepper aroeira",
-  "vodka":"vodca", "açúcar":"acucar", "taça":"taca"
+  "vodka":"vodca", "rúcula":"rucula arugula folha erva verde", "açúcar":"acucar", "taça":"taca"
 };
 DRINKS.forEach(d => {
   const parts = [d.name, d.base, d.glassName, d.profile, ...d.ing.map(i => i[2]), ...d.steps, d.note || "", ...(d.variant ? [d.variant.label, ...d.variant.ing.map(i => i[2])] : [])];
@@ -225,7 +232,7 @@ function renderGrid(){
     const b = document.createElement("button");
     b.className = "card"; b.type = "button"; b.style.setProperty("--c", d.color);
     b.setAttribute("aria-label", "Abrir receita: " + d.name);
-    b.innerHTML = `<div class="ph"><img src="${IMG[d.img]}" alt="" loading="lazy"></div>
+    b.innerHTML = `<div class="ph">${photo(d, true)}</div>
       <div class="info"><h2>${d.name}</h2>
       <div class="tags"><span class="tag base">${d.base}</span><span class="tag">${d.glassName}</span></div>
       <div class="sub">${d.profile}</div>${hitLine(d)}</div>`;
@@ -249,7 +256,8 @@ function renderSheet(){
   const d = DRINKS[current];
   sheet.style.setProperty("--c", d.color);
   $("#d-hero").style.setProperty("--c", d.color);
-  $("#d-img").src = IMG[d.img]; $("#d-img").alt = d.name;
+  $("#d-hero").innerHTML = photo(d, false);
+  const hi = $("#d-hero img"); if(hi) hi.alt = d.name;
   $("#d-title").textContent = d.name;
   $("#d-tags").innerHTML = `<span class="tag base" style="--c:${d.color}">${d.base}</span><span class="tag">${d.glassName}</span><span class="tag">${d.profile}</span>`;
   $("#count").textContent = doses;
