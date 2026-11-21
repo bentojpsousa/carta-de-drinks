@@ -30,6 +30,16 @@ header p{margin:6px 0 0;color:var(--muted)}
 .filters button{font:inherit;font-size:.9rem;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--fg);
   padding:7px 14px;border-radius:999px;cursor:pointer}
 .filters button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.search{position:relative;display:flex;align-items:center}
+.search svg{position:absolute;left:14px;width:20px;height:20px;color:var(--muted);pointer-events:none}
+.search input{width:100%;font:inherit;font-size:1.05rem;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 44px 13px 44px;-webkit-appearance:none;appearance:none}
+.search input::-webkit-search-cancel-button{display:none}
+.search input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.search #q-clear{position:absolute;right:8px;width:32px;height:32px;border-radius:50%;border:none;background:var(--chip);color:var(--fg);font-size:1.2rem;line-height:1;cursor:pointer}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.card .hit{font-size:.82rem;color:var(--fg)}
+.card .hit mark{background:color-mix(in srgb,var(--accent) 22%,transparent);color:inherit;border-radius:3px;padding:0 2px}
+.empty{color:var(--muted);margin:0;font-size:1rem}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
 .card{all:unset;cursor:pointer;display:flex;flex-direction:column;background:var(--surface);border-radius:16px;overflow:hidden;
   border:1px solid var(--line);transition:transform .15s ease}
@@ -92,6 +102,12 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase
     <h1>Carta de Drinks</h1>
     <p>Toque num drink para abrir a receita. Ajuste a quantidade de doses e marque os ingredientes conforme for usando.</p>
   </header>
+  <div class="search">
+    <label for="q" class="visually-hidden">Buscar drink, ingrediente ou bebida</label>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <input id="q" type="search" placeholder="Buscar: manga, gin, limão, grenadine…" autocomplete="off" enterkeyhint="search">
+    <button type="button" id="q-clear" aria-label="Limpar busca" hidden>×</button>
+  </div>
   <div class="filters" role="group" aria-label="Filtrar por base">
     <button type="button" id="f-all" data-f="all" aria-pressed="true">Todos</button>
     <button type="button" id="f-vodka" data-f="Vodka" aria-pressed="false">Vodka</button>
@@ -100,6 +116,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase
     <button type="button" id="f-short" data-f="short" aria-pressed="false">Taça / curto</button>
   </div>
   <div class="grid" id="grid"></div>
+  <p class="empty" id="empty" hidden></p>
 </div>
 
 <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="d-title">
@@ -171,22 +188,56 @@ const grid = $("#grid"), sheet = $("#sheet");
 let filter = "all", current = 0, doses = 1, wake = null;
 const checked = {};
 
-function visible(){ return DRINKS.filter(d => filter==="all" || d.base===filter || d.glass===filter); }
+// Busca: ignora acentos e maiúsculas; cada palavra digitada precisa aparecer no drink.
+const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const SYN = {
+  "grenadine":"granadine groselha romã", "simple syrup":"xarope simples xarope de açúcar calda",
+  "limão":"lima lime", "maracujá":"passion fruit", "manga":"mango", "abacaxi":"pineapple ananás",
+  "refrigerante citrus":"soda sprite limonada", "água com gás":"soda club soda", "pimenta rosa":"pink pepper aroeira",
+  "vodka":"vodca", "açúcar":"acucar", "taça":"taca"
+};
+DRINKS.forEach(d => {
+  const parts = [d.name, d.base, d.glassName, d.profile, ...d.ing.map(i => i[2]), ...d.steps, d.note || ""];
+  const extra = Object.keys(SYN).filter(k => norm(parts.join(" ")).includes(norm(k))).map(k => SYN[k]);
+  d._hay = norm(parts.concat(extra).join(" "));
+});
+let query = "";
+const terms = () => norm(query).split(/\s+/).filter(Boolean);
+function matches(d){ return terms().every(t => d._hay.includes(t)); }
+function hitLine(d){
+  const ts = terms(); if(!ts.length) return "";
+  const hits = d.ing.map(i => i[2]).filter(n => ts.some(t => norm(n).includes(t)));
+  if(!hits.length) return "";
+  const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+  return `<div class="hit">Leva <mark>${hits.map(esc).join("</mark>, <mark>")}</mark></div>`;
+}
+
+function visible(){ return DRINKS.filter(d => (filter==="all" || d.base===filter || d.glass===filter) && matches(d)); }
 
 function renderGrid(){
   grid.innerHTML = "";
-  visible().forEach(d => {
+  const list = visible();
+  list.forEach(d => {
     const b = document.createElement("button");
     b.className = "card"; b.type = "button"; b.style.setProperty("--c", d.color);
     b.setAttribute("aria-label", "Abrir receita: " + d.name);
     b.innerHTML = `<div class="ph"><img src="${IMG[d.img]}" alt="" loading="lazy"></div>
       <div class="info"><h2>${d.name}</h2>
       <div class="tags"><span class="tag base">${d.base}</span><span class="tag">${d.glassName}</span></div>
-      <div class="sub">${d.profile}</div></div>`;
+      <div class="sub">${d.profile}</div>${hitLine(d)}</div>`;
     b.addEventListener("click", () => open(DRINKS.indexOf(d)));
     grid.appendChild(b);
   });
+  const empty = $("#empty");
+  empty.hidden = list.length > 0;
+  if(!list.length) empty.textContent = query.trim()
+    ? `Nenhum drink com “${query.trim()}”` + (filter!=="all" ? " neste filtro. Tente em Todos." : ".")
+    : "Nenhum drink neste filtro.";
 }
+const qEl = $("#q"), qClear = $("#q-clear");
+qEl.addEventListener("input", () => { query = qEl.value; qClear.hidden = !query; renderGrid(); });
+qEl.addEventListener("keydown", e => { if(e.key==="Enter"){ qEl.blur(); } if(e.key==="Escape"){ qEl.value=""; qEl.dispatchEvent(new Event("input")); } });
+qClear.addEventListener("click", () => { qEl.value = ""; qEl.dispatchEvent(new Event("input")); qEl.focus(); });
 
 function fmt(n){ return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ","); }
 
