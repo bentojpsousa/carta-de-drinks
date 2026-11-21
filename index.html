@@ -40,6 +40,7 @@ header p{margin:6px 0 0;color:var(--muted)}
 .card .hit{font-size:.82rem;color:var(--fg)}
 .card .hit mark{background:color-mix(in srgb,var(--accent) 22%,transparent);color:inherit;border-radius:3px;padding:0 2px}
 .empty{color:var(--muted);margin:0;font-size:1rem}
+.var button{font-size:1rem;padding:9px 16px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
 .card{all:unset;cursor:pointer;display:flex;flex-direction:column;background:var(--surface);border-radius:16px;overflow:hidden;
   border:1px solid var(--line);transition:transform .15s ease}
@@ -134,6 +135,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase
         <div class="tags" id="d-tags" style="margin-bottom:8px"></div>
         <h2 id="d-title"></h2>
       </div>
+      <div class="filters var" id="d-var" role="group" aria-label="Versão da receita" hidden></div>
       <div class="serv">
         <span class="lbl">Doses</span>
         <div class="stepper">
@@ -164,7 +166,9 @@ const DRINKS = [
    profile:"Frutado, cítrico",
    ing:[[15,"ml","xarope de manga"],[15,"ml","xarope de maracujá"],[15,"ml","limão espremido"],[60,"ml","vodka"],[null,"","Gelo"],[null,"","Sal para a borda"]],
    steps:["Coloque a vodka, os xaropes e o limão na coqueteleira.","Acrescente gelo e bata bem.","Cruste a borda da taça com sal.","Sirva com o strainer sobre 4 pedras de gelo."],
-   note:"Opcional: complete com água com gás e misture delicadamente."},
+   variant:{label:"Com água com gás",
+     ing:[[30,"ml","xarope de manga"],[15,"ml","xarope de maracujá"],[15,"ml","limão espremido"],[60,"ml","vodka"],[null,"","Gelo"],[null,"","Sal para a borda"],[null,"","Água com gás"]],
+     steps:["Coloque a vodka, os xaropes e o limão na coqueteleira.","Acrescente gelo e bata bem.","Cruste a borda da taça com sal.","Sirva com o strainer sobre 4 pedras de gelo.","Complete com água com gás e misture delicadamente."]}},
   {id:"space-lady",img:"d2",name:"Space Lady",base:"Vodka",glass:"long",glassName:"Copo longo",color:"#ee5a5f",
    profile:"Cítrico, levemente picante",
    ing:[[60,"ml","vodka"],[30,"ml","limão espremido"],[30,"ml","simple syrup"],[null,"","Refrigerante citrus"],[10,"un","pimenta rosa"],[null,"","Gelo"]],
@@ -185,7 +189,7 @@ const DRINKS = [
 
 const $ = s => document.querySelector(s);
 const grid = $("#grid"), sheet = $("#sheet");
-let filter = "all", current = 0, doses = 1, wake = null;
+let filter = "all", current = 0, doses = 1, wake = null, useVar = false;
 const checked = {};
 
 // Busca: ignora acentos e maiúsculas; cada palavra digitada precisa aparecer no drink.
@@ -197,7 +201,7 @@ const SYN = {
   "vodka":"vodca", "açúcar":"acucar", "taça":"taca"
 };
 DRINKS.forEach(d => {
-  const parts = [d.name, d.base, d.glassName, d.profile, ...d.ing.map(i => i[2]), ...d.steps, d.note || ""];
+  const parts = [d.name, d.base, d.glassName, d.profile, ...d.ing.map(i => i[2]), ...d.steps, d.note || "", ...(d.variant ? [d.variant.label, ...d.variant.ing.map(i => i[2])] : [])];
   const extra = Object.keys(SYN).filter(k => norm(parts.join(" ")).includes(norm(k))).map(k => SYN[k]);
   d._hay = norm(parts.concat(extra).join(" "));
 });
@@ -249,19 +253,28 @@ function renderSheet(){
   $("#d-title").textContent = d.name;
   $("#d-tags").innerHTML = `<span class="tag base" style="--c:${d.color}">${d.base}</span><span class="tag">${d.glassName}</span><span class="tag">${d.profile}</span>`;
   $("#count").textContent = doses;
-  const ml = d.ing.reduce((s,[q,u]) => s + (u==="ml" && q ? q : 0), 0) * doses;
+  const vbox = $("#d-var");
+  vbox.hidden = !d.variant;
+  if(d.variant){
+    vbox.innerHTML = `<button type="button" id="var-off" aria-pressed="${!useVar}">Tradicional</button><button type="button" id="var-on" aria-pressed="${useVar}">${d.variant.label}</button>`;
+    $("#var-off").addEventListener("click", () => { useVar = false; renderSheet(); });
+    $("#var-on").addEventListener("click", () => { useVar = true; renderSheet(); });
+  }
+  const r = (useVar && d.variant) ? d.variant : d;
+  const key = d.id + (r===d ? "" : ":var");
+  const ml = r.ing.reduce((s,[q,u]) => s + (u==="ml" && q ? q : 0), 0) * doses;
   $("#total").textContent = `≈ ${ml} ml de ingredientes medidos` + (doses>1 ? ` · use ${doses} copos` : "");
-  const set = checked[d.id] || (checked[d.id] = new Set());
+  const set = checked[key] || (checked[key] = new Set());
   const ul = $("#d-ing"); ul.innerHTML = "";
-  d.ing.forEach(([q,u,t], i) => {
+  r.ing.forEach(([q,u,t], i) => {
     const li = document.createElement("li");
     const qty = q==null ? "a gosto" : `${fmt(q*doses)} ${u}`;
-    const id = `ing-${d.id}-${i}`;
+    const id = `ing-${key.replace(":","-")}-${i}`;
     li.innerHTML = `<label for="${id}"><input type="checkbox" id="${id}" ${set.has(i)?"checked":""}><span class="q">${qty}</span><span>${t}</span></label>`;
     li.querySelector("input").addEventListener("change", e => { e.target.checked ? set.add(i) : set.delete(i); });
     ul.appendChild(li);
   });
-  $("#d-steps").innerHTML = d.steps.map(s => `<li>${s}</li>`).join("");
+  $("#d-steps").innerHTML = r.steps.map(s => `<li>${s}</li>`).join("");
   const note = $("#d-note"); note.hidden = !d.note; note.textContent = d.note || "";
 }
 
@@ -273,7 +286,7 @@ async function keepAwake(on){
 }
 
 function open(i){
-  current = i; doses = 1; renderSheet();
+  current = i; doses = 1; useVar = false; renderSheet();
   sheet.hidden = false; sheet.scrollTop = 0; document.body.style.overflow = "hidden";
   try{ history.replaceState(null, "", "#" + DRINKS[i].id); }catch(e){}
   keepAwake(true);
@@ -288,7 +301,7 @@ function step(dir){
   const list = visible(); let k = list.indexOf(DRINKS[current]);
   if(k<0) k = 0;
   const d = list[(k + dir + list.length) % list.length];
-  current = DRINKS.indexOf(d); doses = 1; renderSheet(); sheet.scrollTop = 0;
+  current = DRINKS.indexOf(d); doses = 1; useVar = false; renderSheet(); sheet.scrollTop = 0;
   try{ history.replaceState(null, "", "#" + d.id); }catch(e){}
 }
 
@@ -302,7 +315,7 @@ $("#prev").addEventListener("click", () => step(-1));
 $("#next").addEventListener("click", () => step(1));
 $("#minus").addEventListener("click", () => { if(doses>1){ doses--; renderSheet(); } });
 $("#plus").addEventListener("click", () => { if(doses<20){ doses++; renderSheet(); } });
-$("#reset").addEventListener("click", () => { checked[DRINKS[current].id] = new Set(); renderSheet(); });
+$("#reset").addEventListener("click", () => { const d = DRINKS[current]; delete checked[d.id]; delete checked[d.id + ":var"]; renderSheet(); });
 document.addEventListener("keydown", e => {
   if(sheet.hidden) return;
   if(e.key==="Escape") close();
